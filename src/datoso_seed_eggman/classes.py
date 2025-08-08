@@ -1,5 +1,7 @@
 """ Classes script needed for Eggman Dats """
 
+import os
+import shutil
 import urllib
 from html.parser import HTMLParser
 from pathlib import Path
@@ -68,6 +70,7 @@ class Eggman:
     class_name = None
     zip_links: list = None
     zip_files: list = None
+    unzip_folders: bool = True
 
     def add_html(self, txt: str) -> str:
         """Wrap the given text in basic HTML tags.
@@ -139,9 +142,35 @@ class Eggman:
 
     def extract_zips(self, folder_helper: Folders) -> None:
         for file in self.zip_files:
-            with ZipFile(folder_helper.dats / file) as zip_file:
-                zip_file.extractall(folder_helper.dats / self.tag)
+            try:
+                if self.unzip_folders:
+                    with ZipFile(folder_helper.dats / file) as zip_file:
+                        zip_file.extractall(folder_helper.dats / self.tag)
+                else:
+                    os.makedirs(folder_helper.dats / self.tag, exist_ok=True)
+                    with ZipFile(folder_helper.dats / file) as zip_file:
+                        for member in zip_file.namelist():
+                            filename = os.path.basename(member)
+                            # skip directories
+                            if not filename:
+                                continue
+                            # copy file (taken from zipfile's extract)
+                            source = zip_file.open(member)
+                            target = open(folder_helper.dats / self.tag / filename, "wb")
+                            with source, target:
+                                shutil.copyfileobj(source, target)
+            except NotImplementedError:
+                print(f"Error: {file} has a compression method that is not supported.")
 
+class Digitoxin(Eggman):
+    """Represents the Digitoxin GitHub release assets.
+
+    This class inherits from the Eggman base class and sets the specific
+    tag for Digitoxin-related assets.
+    """
+
+    tag = 'touhou'
+    class_name = None
 
 class Touhou(Eggman):
     """Represents the Touhou GitHub release assets.
@@ -182,6 +211,7 @@ class SegaALLNet(Eggman):
 
     tag = 'segaalldotnet'
     class_name = None
+    unzip_folders = False
 
 class PinballPC(Eggman):
     """Represents the PinballPC GitHub release assets.
@@ -241,8 +271,29 @@ class C64Ultimate(Eggman):
     tag = 'c64ultimatetape'
     class_name = None
 
+class RPGMaker(Eggman):
+    """Represents the RPG Maker GitHub release assets.
+
+    This class inherits from Eggman and sets the specific tag for RPG Maker-related assets.
+    Note: No specific class is defined for RPG Maker, so this is a placeholder.
+    """
+
+    tag = 'rpgmaker'
+    class_name = None
+
+class ProjectEgg(Eggman):
+    """Represents the Project Egg GitHub release assets.
+
+    This class inherits from Eggman and sets the specific tag for Project Egg-related assets.
+    Note: No specific class is defined for Project Egg, so this is a placeholder.
+    """
+
+    tag = 'projectegg'
+    class_name = None
+
 tag_classes = {
     'touhou': Touhou(),
+    'digitoxin': Digitoxin(),
     'teknoparrot': Teknoparrot(),
     'sharpx68000': SharpX68000(),
     'segaalldotnet': SegaALLNet(),
@@ -252,4 +303,6 @@ tag_classes = {
     'goodtools': GoodTools(),
     'fruitmachines': FruitMachines(),
     'c64ultimatetape': C64Ultimate(),
+    'rpgmaker': RPGMaker(),
+    'projectegg': ProjectEgg(),
 }

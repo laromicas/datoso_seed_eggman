@@ -86,7 +86,7 @@ def download_dat(href: str, folder: Path) -> None:
     """Download a DAT file."""
     file_name = href.split('/')[-1]
     destination = folder / file_name
-    print(f'* Downloading {Bcolors.OKGREEN}{file_name}{Bcolors.ENDC}')
+    print(f'* Downloading {Bcolors.OKGREEN}{file_name}{Bcolors.ENDC} to {href}')
     downloader(url=href, destination=destination, reporthook=None)
 
 def download_dats(links: list, folder: Path) -> None:
