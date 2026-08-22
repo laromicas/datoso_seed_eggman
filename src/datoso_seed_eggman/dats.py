@@ -1,8 +1,8 @@
 """DAT files for Eggman."""
-from datoso.repositories.dat_file import XMLDatFile
+from datoso.repositories.dat_file import DirMultiDatFile, XMLDatFile
 
 
-class TeknoparrotDat(XMLDatFile):
+class TeknoparrotDat(DirMultiDatFile):
     """Teknoparrot DAT file."""
 
     seed: str = 'eggman'
@@ -64,3 +64,6 @@ class SegaALLDotNetDat(XMLDatFile):
     def get_date(self) -> str:
         """Get the date from the dat file."""
         return self.date
+
+class TouhouDat(DirMultiDatFile):
+    """Touhou DAT file."""
