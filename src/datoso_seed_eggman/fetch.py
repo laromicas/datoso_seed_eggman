@@ -7,8 +7,7 @@ from pathlib import Path
 from zipfile import ZipFile
 
 from datoso.configuration.folder_helper import Folders
-from datoso.helpers import Bcolors
-from datoso.helpers.download import downloader
+from datoso.helpers.download import DownloadProgress, downloader
 from datoso.helpers.file_utils import copy_path, move_path
 
 from datoso_seed_eggman import __prefix__
@@ -27,19 +26,17 @@ def unzip_downloaded_files(release: GithubDatRelease) -> None:
                 zip_file.extractall(folder_helper.dats / release.tag)
 
 
-def download_dat(href: str, folder: Path) -> None:
+def download_dat(href: str, folder: Path, progress: DownloadProgress) -> None:
     """Download a DAT file."""
     file_name = href.rsplit('/', maxsplit=1)[-1]
-    destination = folder / file_name
-    if file_name.endswith('.zip'):
-        print(f'* Downloading {Bcolors.OKGREEN}{file_name}{Bcolors.ENDC} to {href}')
-    downloader(url=href, destination=destination, reporthook=None)
+    downloader(url=href, destination=folder / file_name, progress=progress)
 
 def download_dats(links: list, folder: Path) -> None:
     """Create a thread for each download."""
-    with ThreadPoolExecutor(max_workers=3) as executor:
+    with DownloadProgress(total=len(links), description=f'{len(links)} DAT file(s)') as progress, \
+            ThreadPoolExecutor(max_workers=3) as executor:
         futures = [
-            executor.submit(download_dat, href, folder) for href in links
+            executor.submit(download_dat, href, folder, progress) for href in links
         ]
         for future in futures:
             future.result()
