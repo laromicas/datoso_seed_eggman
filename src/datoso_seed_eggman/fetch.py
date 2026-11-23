@@ -1,6 +1,7 @@
 """Fetch and download DAT files."""
 
 import json
+import shutil
 import urllib
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -23,7 +24,17 @@ def unzip_downloaded_files(release: GithubDatRelease) -> None:
             if not Path.exists(folder_helper.dats / release.tag):
                 Path(folder_helper.dats / release.tag).mkdir(parents=True, exist_ok=True)
             with ZipFile(folder_helper.dats / file) as zip_file:
-                zip_file.extractall(folder_helper.dats / release.tag)
+                extract_dats_and_texts(zip_file, folder_helper.dats / release.tag, folder_helper.dats)
+
+
+def extract_dats_and_texts(zip_file: ZipFile, dat_folder: Path, text_folder: Path) -> None:
+    """Extract DATs keeping their folders, and .txt files flat into text_folder (so they aren't copied as DATs)."""
+    names = zip_file.namelist()
+    zip_file.extractall(dat_folder, members=[name for name in names if name.lower().endswith(('.dat', '.xml'))])
+    for name in names:
+        if name.lower().endswith('.txt'):
+            with zip_file.open(name) as source, (text_folder / Path(name).name).open('wb') as target:
+                shutil.copyfileobj(source, target)
 
 
 def download_dat(href: str, folder: Path, progress: DownloadProgress) -> None:
