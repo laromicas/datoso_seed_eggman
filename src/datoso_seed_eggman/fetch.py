@@ -1,14 +1,14 @@
 """Fetch and download DAT files."""
 
 import json
+import shutil
 import urllib
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from zipfile import ZipFile
 
 from datoso.configuration.folder_helper import Folders
-from datoso.helpers import Bcolors
-from datoso.helpers.download import downloader
+from datoso.helpers.download import DownloadProgress, downloader
 from datoso.helpers.file_utils import copy_path, move_path
 
 from datoso_seed_eggman import __prefix__
@@ -24,22 +24,30 @@ def unzip_downloaded_files(release: GithubDatRelease) -> None:
             if not Path.exists(folder_helper.dats / release.tag):
                 Path(folder_helper.dats / release.tag).mkdir(parents=True, exist_ok=True)
             with ZipFile(folder_helper.dats / file) as zip_file:
-                zip_file.extractall(folder_helper.dats / release.tag)
+                extract_dats_and_texts(zip_file, folder_helper.dats / release.tag, folder_helper.dats)
 
 
-def download_dat(href: str, folder: Path) -> None:
+def extract_dats_and_texts(zip_file: ZipFile, dat_folder: Path, text_folder: Path) -> None:
+    """Extract DATs keeping their folders, and .txt files flat into text_folder (so they aren't copied as DATs)."""
+    names = zip_file.namelist()
+    zip_file.extractall(dat_folder, members=[name for name in names if name.lower().endswith(('.dat', '.xml'))])
+    for name in names:
+        if name.lower().endswith('.txt'):
+            with zip_file.open(name) as source, (text_folder / Path(name).name).open('wb') as target:
+                shutil.copyfileobj(source, target)
+
+
+def download_dat(href: str, folder: Path, progress: DownloadProgress) -> None:
     """Download a DAT file."""
     file_name = href.rsplit('/', maxsplit=1)[-1]
-    destination = folder / file_name
-    if file_name.endswith('.zip'):
-        print(f'* Downloading {Bcolors.OKGREEN}{file_name}{Bcolors.ENDC} to {href}')
-    downloader(url=href, destination=destination, reporthook=None)
+    downloader(url=href, destination=folder / file_name, progress=progress)
 
 def download_dats(links: list, folder: Path) -> None:
     """Create a thread for each download."""
-    with ThreadPoolExecutor(max_workers=3) as executor:
+    with DownloadProgress(total=len(links), description=f'{len(links)} DAT file(s)') as progress, \
+            ThreadPoolExecutor(max_workers=3) as executor:
         futures = [
-            executor.submit(download_dat, href, folder) for href in links
+            executor.submit(download_dat, href, folder, progress) for href in links
         ]
         for future in futures:
             future.result()
